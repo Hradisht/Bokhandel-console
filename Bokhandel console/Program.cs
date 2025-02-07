@@ -1,16 +1,16 @@
-﻿using MongoDB.Bson;
-using MongoDB.Bson.Serialization;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace BookStoreApp
 {
     public class Författare
     {
         [BsonId]
-        public ObjectId ID { get; set; } 
+        public ObjectId ID { get; set; }
         public string Förnamn { get; set; }
         public string Efternamn { get; set; }
         public DateTime Födelsedatum { get; set; }
@@ -42,21 +42,19 @@ namespace BookStoreApp
     public class Böcker
     {
         [BsonId]
-        public string ISBN13 { get; set; }  
+        public ObjectId Id { get; set; }  
 
-        public static Böcker FromBson(BsonDocument doc)
-        {
-            var book = BsonSerializer.Deserialize<Böcker>(doc);
-            book.ISBN13 = book.ISBN13?.ToString();  // Explicit conversion if needed
-            return book;
-        }
         public string Titel { get; set; }
         public string Språk { get; set; }
         public decimal Pris { get; set; }
         public DateTime Utgivningsdatum { get; set; }
-        public string FörfattareID { get; set; }  // Use string or ObjectId, depending on your design
+
+        [BsonRepresentation(BsonType.ObjectId)] 
+        public ObjectId FörfattareID { get; set; }  
+
         public string Genre { get; set; }
     }
+
 
     public class Ordrar
     {
@@ -72,8 +70,8 @@ namespace BookStoreApp
     {
         [BsonId]
         public ObjectId ID { get; set; }
-        public ObjectId ButikID { get; set; }  // This remains as ObjectId if it is referring to a MongoDB store ID
-        public string BokID { get; set; }  // Change BokID to string
+        public ObjectId ButikID { get; set; }
+        public ObjectId BokID { get; set; }  
         public int Antal { get; set; }
     }
 
@@ -99,7 +97,7 @@ namespace BookStoreApp
     {
         static void Main(string[] args)
         {
-            var context = new BookStoreContext("mongodb://localhost:27017", "BookStoreDB");
+            var context = new BookStoreContext("mongodb+srv://User1:<Password>@cluster0.pymok.mongodb.net/\r\n", "BookStoreDB"); // Byt ut connection stringen till atlasen 
 
             bool fortsätt = true;
             while (fortsätt)
@@ -109,7 +107,7 @@ namespace BookStoreApp
                 Console.WriteLine("1. Lista lagersaldo för butiker");
                 Console.WriteLine("2. Lägg till bok i butik");
                 Console.WriteLine("3. Ta bort bok från butik");
-                Console.WriteLine("5. Avsluta");  // Removed the "4. Ta bort författare"
+                Console.WriteLine("5. Avsluta");  
                 Console.Write("Välj ett alternativ: ");
                 var choice = Console.ReadLine();
                 switch (choice)
@@ -164,7 +162,7 @@ namespace BookStoreApp
             Console.WriteLine("\nVälj en bok att lägga till:");
             for (int i = 0; i < böcker.Count; i++)
             {
-                Console.WriteLine($"{i + 1}. {böcker[i].Titel} ({böcker[i].ISBN13})");
+                Console.WriteLine($"{i + 1}. {böcker[i].Titel} ({böcker[i].Id})");  
             }
 
             Console.Write("Ange bokens nummer: ");
@@ -181,7 +179,7 @@ namespace BookStoreApp
                 var lagersaldo = new Lagersaldo
                 {
                     ButikID = butik.ID,
-                    BokID = bok.ISBN13,  // bok.ISBN13 is now an ObjectId
+                    BokID = bok.Id,  
                     Antal = antal
                 };
 
@@ -210,7 +208,7 @@ namespace BookStoreApp
             foreach (var lagersaldo in lagersaldoList)
             {
                 var butik = butikerList.FirstOrDefault(b => b.ID == lagersaldo.ButikID);
-                var bok = böckerList.FirstOrDefault(b => b.ISBN13 == lagersaldo.BokID);
+                var bok = böckerList.FirstOrDefault(b => b.Id == lagersaldo.BokID);  
 
                 if (butik != null && bok != null)
                 {
@@ -256,7 +254,7 @@ namespace BookStoreApp
             Console.WriteLine("\nVälj en bok att ta bort:");
             for (int i = 0; i < lagersaldo.Count; i++)
             {
-                var bok = context.Böcker.Find(b => b.ISBN13 == lagersaldo[i].BokID).FirstOrDefault();
+                var bok = context.Böcker.Find(b => b.Id == lagersaldo[i].BokID).FirstOrDefault(); 
                 Console.WriteLine($"{i + 1}. {bok?.Titel} ({lagersaldo[i].Antal} st)");
             }
 
